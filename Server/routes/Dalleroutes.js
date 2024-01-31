@@ -13,7 +13,7 @@ const router = express.Router(); // new instance of the router
 const configuration = new Configuration({
     apikey : process.env.OPEN_AI_KEY,
 })
-
+console.log(configuration)
 const openai = new OpenAIApi(configuration);
 
 router.route('/').get((req,res)=> {
@@ -25,15 +25,15 @@ router.route('/').post(async(req, res)=>
     try {
         const {prompt} = req.body;
 
-        const aiResponse = await openai.createImage({
+        const aiResponse = await openai.images.generate({
             prompt,
             n:1,
             size: '1024x1024',
             response_format:'b64_json',
         });
 
-        const image = aiResponse.data.data[0].b64_json;
-        res.status(200).json({ photo: image });
+        const image = aiResponse.data[0].b64_json;
+        return res.status(200).json({ photo: image });
     }catch(error){
         console.log(error);
         res.status(500).send(error?.response.data.error.message)
