@@ -23,7 +23,7 @@ const CreatePost = () => {
 
       setLoading(true);
       try{
-        const response = await fetch('https://my-ai-image-generator.onrender.com/api/v1/post',
+        const response = await fetch('https://image-generator-p3xu.onrender.com/api/v1/post',
         {
           method:'POST',
           headers: {
@@ -53,7 +53,7 @@ const CreatePost = () => {
       try{
 
         setGeneratingImg(true);
-        const response = await fetch('https://my-ai-image-generator.onrender.com/api/v1/dalle',{
+        const response = await fetch('https://image-generator-p3xu.onrender.com/api/v1/dalle',{
           method : 'POST',
           headers : {
             'content-type': 'application/json',
