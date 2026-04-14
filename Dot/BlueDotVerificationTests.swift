@@ -87,6 +87,164 @@ private final class RuntimeWebViewMessageTracker: NSObject, WebViewMessageDelega
     }
 }
 
+private final class RuntimeCompassServiceLocator: ServiceLocatorType {
+    static var shared: ServiceLocatorType { ServiceLocator.shared }
+
+    private let base: ServiceLocatorType
+    private lazy var networkService: NetworkServiceType = NetworkService()
+    private lazy var configurationService: ConfigurationService = ConfigurationServiceImpl(
+        configurationStoreService: base.getConfigurationStoreService(),
+        networkService: networkService
+    )
+    private var storeMapViewModel: StoreMapViewActionable?
+    private var messageSender: MessageSending?
+    private var messageParser: MessageParsing?
+    private var compassViewModel: CompassViewModelType?
+    private weak var registeredStoreMapsViewController: StoreMapsViewController?
+
+    init(base: ServiceLocatorType = ServiceLocator.shared) {
+        self.base = base
+    }
+
+    func getLocationPermissionService() -> LocationPermissionService {
+        base.getLocationPermissionService()
+    }
+
+    func getNetworkMonitorService() -> NetworkMonitorService {
+        base.getNetworkMonitorService()
+    }
+
+    func getIndoorPositioningService() -> IndoorPositioningService {
+        base.getIndoorPositioningService()
+    }
+
+    func getIndoorNavigationService() -> IndoorNavigationService {
+        base.getIndoorNavigationService()
+    }
+
+    func getStaticPathPreviewService() -> StaticPathPreviewService {
+        base.getStaticPathPreviewService()
+    }
+
+    func getMapFocusManager() -> MapFocusManager {
+        base.getMapFocusManager()
+    }
+
+    func getStatusService() -> StatusService {
+        base.getStatusService()
+    }
+
+    func getEventService() -> EventService {
+        base.getEventService()
+    }
+
+    func getAssetService() -> AssetService {
+        base.getAssetService()
+    }
+
+    func getEventStoreService() -> EventStoreService {
+        base.getEventStoreService()
+    }
+
+    func getConfigurationStoreService() -> ConfigurationStoreService {
+        base.getConfigurationStoreService()
+    }
+
+    func getConfigurationService() -> ConfigurationService {
+        configurationService
+    }
+
+    func getLogEventStoreService() -> LogEventStoreService {
+        base.getLogEventStoreService()
+    }
+
+    func getLogDefaultImpl() -> LogDefault {
+        base.getLogDefaultImpl()
+    }
+
+    func getUserPositionManager() -> any UserPositionManagement {
+        base.getUserPositionManager()
+    }
+
+    func getNetworkService() -> any NetworkServiceType {
+        networkService
+    }
+
+    func getStoreMapViewModel(
+        blueDotMode: BlueDotMode,
+        storeMapOptions: StoreMapView.Options,
+        debugLog: DebugLog?
+    ) -> StoreMapViewActionable {
+        guard let storeMapViewModel else {
+            self.storeMapViewModel = StoreMapLoaderViewModel(
+                blueDotMode: blueDotMode,
+                storeMapOptions: storeMapOptions,
+                debugLog: debugLog,
+                serviceLocator: self
+            )
+            return getStoreMapViewModel(
+                blueDotMode: blueDotMode,
+                storeMapOptions: storeMapOptions,
+                debugLog: debugLog
+            )
+        }
+
+        #if DEBUG
+        if let loaderViewModel = storeMapViewModel as? StoreMapLoaderViewModel {
+            loaderViewModel.updateConfiguration(
+                pinsConfig: storeMapOptions.pinsConfig,
+                navigationConfig: storeMapOptions.navigationConfig
+            )
+        }
+        #endif
+
+        return storeMapViewModel
+    }
+
+    func getCompassViewModel() -> any CompassViewModelType {
+        guard let compassViewModel else {
+            self.compassViewModel = CompassViewModel(serviceLocator: self)
+            return getCompassViewModel()
+        }
+
+        return compassViewModel
+    }
+
+    func getWebViewMessageSender() -> any MessageSending {
+        guard let messageSender else {
+            self.messageSender = MessageSender()
+            return getWebViewMessageSender()
+        }
+
+        return messageSender
+    }
+
+    func getWebViewMessageParser() -> MessageParsing {
+        guard let messageParser else {
+            self.messageParser = MessageParser()
+            return getWebViewMessageParser()
+        }
+
+        return messageParser
+    }
+
+    func destroy() {
+        storeMapViewModel = nil
+        messageSender = nil
+        messageParser = nil
+        compassViewModel = nil
+        registeredStoreMapsViewController = nil
+    }
+
+    func registerStoreMapsViewController(_ vc: StoreMapsViewController?) {
+        registeredStoreMapsViewController = vc
+    }
+
+    func getRegisteredStoreMapsViewController() -> StoreMapsViewController? {
+        registeredStoreMapsViewController
+    }
+}
+
 private final class RuntimeMapHost {
     private let window = UIWindow(frame: UIScreen.main.bounds)
     private let rootViewController = UIViewController()
@@ -417,14 +575,19 @@ final class BlueDotVerificationTests: XCTestCase {
         let tracker = RuntimeWebViewMessageTracker {
             runtimeExpectation.fulfill()
         }
-        let compass = Compass()
+        let runtimeServiceLocator = RuntimeCompassServiceLocator()
+        let runtimeViewModel = CompassViewModel(serviceLocator: runtimeServiceLocator)
+        let compass = Compass(serviceLocator: runtimeServiceLocator, viewModel: runtimeViewModel)
         var mapViewController: UIViewController?
         var host: RuntimeMapHost?
         var initError: Error?
 
         DispatchQueue.main.async {
             compass.setEnvironment(self.testConfig.compassEnvironment)
-            compass.setWebViewMessageDelegate(tracker)
+            StaticStorage.authParameter = authParameter
+            if let parser = runtimeServiceLocator.getWebViewMessageParser() as? MessageParser {
+                parser.webviewParserDelegate = tracker
+            }
 
             let runtimeHost = RuntimeMapHost()
             host = runtimeHost
@@ -436,7 +599,6 @@ final class BlueDotVerificationTests: XCTestCase {
                     DispatchQueue.main.async {
                         mapViewController = returnedMapViewController
                         runtimeHost.attach(returnedMapViewController)
-                        compass.setWebViewMessageDelegate(tracker)
                         compass.displayMap(
                             workflow: Workflow(
                                 id: "bluedot_runtime_check",
@@ -464,7 +626,11 @@ final class BlueDotVerificationTests: XCTestCase {
             }
 
             let snapshot = tracker.snapshot()
-            cleanupRuntimeCompass(compass: compass, host: host)
+            cleanupRuntimeCompass(
+                compass: compass,
+                host: host,
+                runtimeServiceLocator: runtimeServiceLocator
+            )
             return RuntimeBlueDotSignalResult(
                 mapLoaded: snapshot.mapLoaded,
                 userLocationRenderedReceived: snapshot.userLocationRendered,
@@ -475,7 +641,11 @@ final class BlueDotVerificationTests: XCTestCase {
 
         _ = XCTWaiter().wait(for: [runtimeExpectation], timeout: runtimeTimeout)
         let snapshot = tracker.snapshot()
-        cleanupRuntimeCompass(compass: compass, host: host)
+        cleanupRuntimeCompass(
+            compass: compass,
+            host: host,
+            runtimeServiceLocator: runtimeServiceLocator
+        )
 
         let blueDotDisplayed = snapshot.mapLoaded && (snapshot.userLocationRendered || snapshot.userLocationRequested)
 
@@ -511,14 +681,22 @@ final class BlueDotVerificationTests: XCTestCase {
         )
     }
 
-    private func cleanupRuntimeCompass(compass: Compass, host: RuntimeMapHost?) {
+    private func cleanupRuntimeCompass(
+        compass: Compass,
+        host: RuntimeMapHost?,
+        runtimeServiceLocator: RuntimeCompassServiceLocator
+    ) {
         let cleanupExpectation = XCTestExpectation(description: "Cleanup runtime verification resources")
 
         DispatchQueue.main.async {
-            compass.setWebViewMessageDelegate(nil)
+            if let parser = runtimeServiceLocator.getWebViewMessageParser() as? MessageParser {
+                parser.webviewParserDelegate = nil
+            }
             compass.killSwitch()
             ServiceLocator.shared.getIndoorPositioningService().logout()
             host?.tearDown()
+            runtimeServiceLocator.destroy()
+            ServiceLocator.shared.registerStoreMapsViewController(nil)
             ServiceLocator.shared.destroy()
             StaticStorage.authParameter = nil
             StaticStorage.storeConfig = nil
