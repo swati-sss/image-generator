@@ -1,183 +1,119 @@
 //
-//  UserPositionManager.swift
-//  compass_sdk_ios
+//  APIKeys.swift
+//  WalmartPlatform
 //
-//  Created by Pratik Patel on 1/15/24.
+//  Created by Venkatesh Jujjavarapu on 01/12/20.
+//  Copyright © 2020 Walmart. All rights reserved.
 //
 
-import Combine
-import IPSFramework
+import Foundation
 
-protocol UserPositionManagement: AnyObject {
-    var building: IPSBuilding? { get }
+// MARK: - This file acts as the storage for all the keys for API's in Glass App moving forward.
 
-    init(serviceLocator: ServiceLocatorType)
-    func getUserPosition() -> AnyPublisher<User, Never>
-    func startPositioning()
-    func stopPositioning(reason: String?, completion: (() -> Void)?)
-    func logout()
+/// Provides all the keys used by all services.
+public protocol SecureKeyProviding {
+    var airshipKey: String { get }
+    var airshipSecret: String { get }
+    var branchProdKey: String { get }
+    var branchDevKey: String { get }
+    var braze: String { get }
+    var buttonApplicationIdDebug: String { get }
+    var buttonApplicationIdProd: String { get }
+    var pendoKey: String { get }
+    var quantumMetricKey: String { get }
+    var quantumMetricStageKey: String { get }
+    var appsFlyerDevKey: String { get }
+    var appsFlyerAppID: String { get }
+    var appsFlyerOneLinkAuth: String { get }
+    var fitPredictorPartnerKey: String { get }
+    var fitPredictorServiceKey: String { get }
+    var fitPredictorEmailSalt: String { get }
+    var flipp: String { get }
+    var threatMetrixStgOrgID: String { get }
+    var threatMetrixProdOrgID: String { get }
+    var encryptionKey: String { get }
+    var idMeClientIdKey: String { get }
+    var appCenterKey: String { get }
+    var arAPIClientIdKey: String { get }
+    var arAPIClientSecretKey: String { get }
+    var googleMaps: String { get }
+    var fisPayPageId: String { get }
+    var fisPayPageProdId: String { get }
+    var bazaarvoice: String { get }
+    var tslSharedSecrete: String { get }
+    var tslSharedDevSecrete: String { get }
+    var tslClientKey: String { get }
+    var tslClientDevKey: String { get }
+    var livestreamSaltKey: String { get }
+    var livestreamSaltDevKey: String { get }
+    var acousticAppKey: String { get }
+    var acousticClientSecret: String { get }
+    var acousticIgniToken: String { get }
+    var acousticRefreshToken: String { get }
+    var aropticalProdKey: String { get }
+    var aropticalDevKey: String { get }
+    var dsgNativePartnerKey: String { get }
+    var dsgNativeAPIServiceKey: String { get }
+    var synchronyStageClientKey: String { get }
+    var synchronyStageClientIDKey: String { get }
+    var synchronyClientKey: String { get }
+    var synchronyClientIDKey: String { get }
+    var synchronyBusinessStageClientKey: String { get }
+    var synchronyBusinessStageClientID: String { get }
+    var synchronyBusinessClientKey: String { get }
+    var synchronyBusinessClientID: String { get }
+    var compassProdLoggedInConsumerId: String { get }
+    var compassStageLoggedInConsumerId: String { get }
+    var compassProdGuestConsumerId: String { get }
+    var compassStageGuestConsumerId: String { get }
+    var compassProdGuestClientSecret: String { get }
+    var compassStageGuestClientSecret: String { get }
+    var sfmcMID: String { get }
+    var sfmcAppId: String { get }
+    var sfmcAccessToken: String { get }
+    func getPerimeterXKey() -> String
 }
 
-extension UserPositionManagement {
-    func stopPositioning(reason: String? = nil) {
-        stopPositioning(reason: reason, completion: nil)
-    }
+extension SecureKeyProviding {
+    public var airshipKey: String { "AirshipAPIKey" }
+    public var airshipSecret: String { "AirshipAPISecret" }
+    public var appCenterKey: String { "AppCenterKey" }
+    public var arAPIClientIdKey: String { "ArAPIClientIdKey" }
+    public var arAPIClientSecretKey: String { "ArAPIClientSecretKey" }
+    public var branchProdKey: String { "BranchProdKey" }
+    public var branchDevKey: String { "BranchDevKey" }
+    public var buttonApplicationIdDebug: String { "ButtonApplicationIdDebug" }
+    public var buttonApplicationIdProd: String { "ButtonApplicationIdProd" }
+    public var compassProdLoggedInConsumerId: String { "CompassProdLoggedInConsumerId" }
+    public var compassStageLoggedInConsumerId: String { "CompassStageLoggedInConsumerId" }
+    public var compassProdGuestConsumerId: String { "CompassProdGuestConsumerId" }
+    public var compassStageGuestConsumerId: String { "CompassStageGuestConsumerId" }
+    public var compassProdGuestClientSecret: String { "CompassProdGuestClientSecret" }
+    public var compassStageGuestClientSecret: String { "CompassStageGuestClientSecret" }
 }
 
-final class UserPositionManager: UserPositionManagement {
-    enum LoginState {
-        case loggedOut
-        case loginInProgress
-        case loggedIn
-    }
-
-    private let indoorPositioningService: IndoorPositioningService
-    private let indoorNavigationService: IndoorNavigationService
-    private let staticPathPreviewService: StaticPathPreviewService
-    private let sessionStorage: SessionStorable.Type
-    private var buildingSelectionCancellable: AnyCancellable?
-    private var oriientLoginState: LoginState = .loggedOut
-    @Published private(set) var building: IPSBuilding?
-
-    required init(serviceLocator: ServiceLocatorType) {
-        indoorPositioningService = serviceLocator.getIndoorPositioningService()
-        sessionStorage = serviceLocator.getSessionStorage()
-        indoorNavigationService = serviceLocator.getIndoorNavigationService()
-        staticPathPreviewService = serviceLocator.getStaticPathPreviewService()
-    }
-
-    deinit {
-        logout()
-    }
-
-    func startPositioning() {
-        switch oriientLoginState {
-        case .loggedIn:
-            initiateBuildingSelection()
-        case .loggedOut:
-            loginToOriient()
-        default:
-            break
-        }
-    }
-
-    func stopPositioning(reason: String?, completion: (() -> Void)?) {
-        indoorPositioningService.stopPositioning(reason: reason) { [weak self] error in
-            self?.handleStopPositioningResult(error, completion: completion)
-        }
-        clearBuildingSelection()
-    }
-
-    func getUserPosition() -> AnyPublisher<User, Never> {
-        indoorPositioningService.lastPosition
-            .receive(on: DispatchQueue.main)
-            .map { [weak self] position in
-                guard let self,
-                      let lastPosition = self.indoorPositioningService.lastLockedPosition else {
-                    return User(position: nil, state: .hidden)
-                }
-
-                if let position {
-                    return User(position: position, state: position.isLocked ? .locked : .lostLock)
-                }
-                return User(position: lastPosition, state: .lostLock)
-            }.eraseToAnyPublisher()
-    }
-
-    func logout() {
-        indoorPositioningService.logout()
-        oriientLoginState = .loggedOut
-        building = nil
-        buildingSelectionCancellable?.cancel()
-        buildingSelectionCancellable = nil
-    }
+/// Acoustic
+extension SecureKeyProviding {
+    public var acousticAppKey: String { "AcousticAppKey" }
+    public var acousticClientSecret: String { "AcousticClientSecret" }
+    public var acousticIgniToken: String { "AcousticIgniToken" }
+    public var acousticRefreshToken: String { "AcousticRefreshToken" }
 }
 
-private extension UserPositionManager {
-    func clearBuildingSelection() {
-        buildingSelectionCancellable?.cancel()
-        buildingSelectionCancellable = nil
-    }
+extension SecureKeyProviding {
+    public var aropticalProdKey: String { "AROpticalProdKey" }
+    public var aropticalDevKey: String { "AROpticalDevKey" }
+}
 
-    func handleStopPositioningResult(_ error: IPSError?, completion: (() -> Void)?) {
-        DispatchQueue.dispatchToMainIfNeeded {
-            defer {
-                completion?()
-            }
+extension SecureKeyProviding {
+    public var sfmcMID: String { "SfmcAPIMID" }
+    public var sfmcAppId: String { "SfmcAppId" }
+    public var sfmcAccessToken: String { "SfmcAccessToken" }
+}
 
-            guard error == nil else {
-                self.clearBuildingSelection()
-                return
-            }
-
-            Log.info("Finished Stop Positioning")
-            self.indoorNavigationService.resetWaypoints(shouldClearBlueDot: true, shouldClearPinList: true)
-            self.clearBuildingSelection()
-        }
-    }
-
-    func startIndoorPositioning(building: IPSBuilding) {
-        indoorPositioningService.startPositioning(building: building) { err in
-            if let err {
-                Log.error("Start positioning failed with error: \(err)")
-            }
-            let buildingName = building.clientBuildingId ?? building.displayName
-            Log.info("Start Positioning in building: \(buildingName) floor: \(building.primaryFloor.name)")
-        }
-    }
-
-    func loginToOriient() {
-        guard oriientLoginState == .loggedOut else {
-            return
-        }
-        oriientLoginState = .loginInProgress
-        Analytics.initialization(state: .login)
-
-        let userId = sessionStorage.configuration?.anonymizedUserID ?? "compass user"
-        self.indoorPositioningService.login(userId: userId) { [weak self] error in
-            DispatchQueue.dispatchToMainIfNeeded {
-                if let error {
-                    Log.error("Oriient login failed: \(error.code): \(error.message): \(error.recoveryStrategy)")
-                    error.sendToTelemetry(context: .IPS_CONTEXT_LOGIN)
-                    return
-                }
-                Analytics.telemetry(payload: TelemetryAnalytics(event: Init.INIT_ORIIENT_LOGIN.rawValue))
-                Log.info("Finish Oriient Login with userId: \(userId)")
-                self?.oriientLoginState = .loggedIn
-                self?.initiateBuildingSelection()
-            }
-        }
-    }
-
-    func initiateBuildingSelection() {
-        guard oriientLoginState == .loggedIn else {
-            Log.error("Cannot initiate building selection, user is not logged in.")
-            return
-        }
-
-        buildingSelectionCancellable?.cancel()
-        if let building,
-           building.clientBuildingId?.trimmingCharacters(in: .whitespacesAndNewlines) == "\(sessionStorage.storeId)" {
-            startIndoorPositioning(building: building)
-            return
-        }
-
-        Analytics.initialization(state: .mapDownload)
-        Analytics.telemetry(payload: TelemetryAnalytics(
-            event: Init.INIT_ORIIENT_BUILDING_SEARCH.rawValue
-        ))
-        self.indoorPositioningService.getBuilding("\(sessionStorage.storeId)") { [weak self] building in
-            DispatchQueue.dispatchToMainIfNeeded {
-                self?.building = building
-                self?.indoorNavigationService.setBuilding(building)
-                self?.staticPathPreviewService.setBuilding(building)
-                self?.startIndoorPositioning(building: building)
-            }
-        } onError: { error in
-            DispatchQueue.dispatchToMainIfNeeded {
-                Log.error("Error fetching building metadata: \(error)")
-                error.sendToTelemetry(context: .IPS_CONTEXT_BUILDING_SEARCH)
-            }
-        }
-    }
+extension SecureKeyProviding {
+    public var synchronyBusinessStageClientKey: String { "SynchronyBusinessStageClientKey" }
+    public var synchronyBusinessStageClientID: String { "SynchronyBusinessStageClientID" }
+    public var synchronyBusinessClientKey: String { "SynchronyBusinessClientKey" }
+    public var synchronyBusinessClientID: String { "SynchronyBusinessClientID" }
 }
