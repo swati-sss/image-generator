@@ -1,189 +1,22 @@
 //
-//  MockSecureKeys.swift
-//  BotDetectionTests
+//  SecureKeys-Debug.xcconfig
+//  Walmart
 //
-//  Created by Alexandre Oliveira Santos on 5/12/21.
+//  Created by Alexandre Oliveira Santos on 5/10/21.
 //  Copyright © 2021 Walmart. All rights reserved.
 //
 
-import Foundation
-import WalmartPlatform
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
 
-public struct MockSecureKeys: SecureKeyProviding {
-    public var branchProdKey: String
-    public var branchDevKey: String
-    public var braze: String
-    public var buttonApplicationIdDebug: String
-    public var buttonApplicationIdProd: String
-    public var pendoKey: String
-    public var quantumMetricKey: String
-    public var quantumMetricStageKey: String
-    public var appsFlyerDevKey: String
-    public var appsFlyerAppID: String
-    public var appsFlyerOneLinkAuth: String
-    public var fitPredictorPartnerKey: String
-    public var fitPredictorServiceKey: String
-    public var fitPredictorEmailSalt: String
-    public var flipp: String
-    public var threatMetrixStgOrgID: String
-    public var threatMetrixProdOrgID: String
-    public var encryptionKey: String
-    public var mokePerimeterXKey: String
-    public var idMeClientIdKey: String
-    public var appCenterKey: String
-    public var arAPIClientIdKey: String
-    public var arAPIClientSecretKey: String
-    public var googleMaps: String
-    public var fisPayPageId: String
-    public var fisPayPageProdId: String
-    public var bazaarvoice: String
+#include "SecureKeys-Base.xcconfig"
 
-    public var tslSharedSecrete: String
-    public var tslSharedDevSecrete: String
-    public var tslClientKey: String
-    public var tslClientDevKey: String
-    public var livestreamSaltKey: String
-    public var livestreamSaltDevKey: String
-    public var aropticalProdKey: String
-    public var aropticalDevKey: String
-    public var dsgNativePartnerKey: String
-    public var dsgNativeAPIServiceKey: String
-    public var synchronyStageClientKey: String
-    public var synchronyStageClientIDKey: String
-    public var synchronyClientKey: String
-    public var synchronyClientIDKey: String
-    public var synchronyBusinessStageClientKey: String
-    public var synchronyBusinessStageClientID: String
-    public var synchronyBusinessClientKey: String
-    public var synchronyBusinessClientID: String
+APPCENTER_API_KEY="15db8ce163e702236aa5d5bb0bc406273c0382c5"
+COMPASS_PROD_LOGGED_IN_CONSUMER_ID=""
+COMPASS_STAGE_LOGGED_IN_CONSUMER_ID=""
+COMPASS_PROD_GUEST_CONSUMER_ID=""
+COMPASS_STAGE_GUEST_CONSUMER_ID=""
+COMPASS_PROD_GUEST_CLIENT_SECRET=""
+COMPASS_STAGE_GUEST_CLIENT_SECRET=""
 
-    public var acousticAppKey: String
-    public var acousticClientSecret: String
-    public var acousticIgniToken: String
-    public var acousticRefreshToken: String
-
-    public var compassProdLoggedInConsumerId: String
-    public var compassStageLoggedInConsumerId: String
-    public var compassProdGuestConsumerId: String
-    public var compassStageGuestConsumerId: String
-    public var compassProdGuestClientSecret: String
-    public var compassStageGuestClientSecret: String
-
-    public init(
-        branchProdKey: String = "branch_prod_key",
-        branchDevKey: String = "branch_dev_key",
-        braze: String = "braze_key",
-        buttonApplicationIdDebug: String = "button_application_id_debug",
-        buttonApplicationIdProd: String = "button_application_id_prod",
-        pendoKey: String = "pendo_Key",
-        perimeterX: String = "perimeterX_key",
-        quantumMetricKey: String = "quantumMetric_key",
-        quantumMetricStageKey: String = "quantumMetric_stageKey",
-        appsFlyerDevKey: String = "appsFlyerDevKey_key",
-        appsFlyerAppID: String = "appsFlyerAppID_key",
-        appsFlyerOneLinkAuth: String = "appsFlyerOneLinkAuth_key",
-        fitPredictorPartnerKey: String = "fitPredictorPartnerKey",
-        fitPredictorServiceKey: String = "fitPredictorServiceKey",
-        fitPredictorEmailSalt: String = "fitPredictorEmailSalt",
-        flipp: String = "flipp_key",
-        threatMetrixStgOrgID: String = "1abcd2ef",
-        threatMetrixProdOrgID: String = "fe2dcba1",
-        encryptionKey: String = "0123456789ABCDEF0123456789ABCDEF",
-        idMeClientIdKey: String = "id_me_client_id_key",
-        appCenterKey: String = "app_center_key",
-        arAPIClientIdKey: String = "arAPIClientId_key",
-        arAPIClientSecretKey: String = "arAPIClientSecret_key",
-        googleMaps: String = "googleMaps_key",
-        fisPaypageId: String = "fisPaypageId",
-        fisPayPageProdId: String = "fisPayPageProdId",
-        bazaarvoice: String = "bazaarvoice_key",
-        tslSharedSecrete: String = "tslSharedSecrete",
-        tslSharedDevSecrete: String = "tslSharedDevSecrete",
-        tslClientKey: String = "tslClientKey",
-        tslClientDevKey: String = "tslClientDevKey",
-        livestreamSaltKey: String = "livestreamSaltKey",
-        livestreamSaltDevKey: String = "livestreamSaltDevKey",
-        aropticalProdKey: String = "aropticalProdKey",
-        aropticalDevKey: String = "aropticalDevKey",
-        dsgNativePartnerKey: String = "dsgNativePartnerKey",
-        dsgNativeAPIServiceKey: String = "dsgNativeAPIServiceKey",
-        acousticAppKey: String = "acousticAppKey",
-        acousticClientSecret: String = "acousticClientSecret",
-        acousticIgniToken: String = "acousticIgniToken",
-        acousticRefreshToken: String = "acousticRefreshToken",
-        synchronyStageClientKey: String = "synchronyStageClientKey",
-        synchronyStageClientIDKey: String = "synchronyStageClientIDKey",
-        synchronyClientKey: String = "synchronyClientKey",
-        synchronyClientIDKey: String = "synchronyClientIDKey",
-        synchronyBusinessStageClientKey: String = "synchronyBusinessStageClientKey",
-        synchronyBusinessStageClientID: String = "synchronyBusinessStageClientID",
-        synchronyBusinessClientKey: String = "synchronyBusinessClientKey",
-        synchronyBusinessClientID: String = "synchronyBusinessClientID",
-        compassProdLoggedInConsumerId: String = "compassProdLoggedInConsumerId",
-        compassStageLoggedInConsumerId: String = "compassStageLoggedInConsumerId",
-        compassProdGuestConsumerId: String = "compassProdGuestConsumerId",
-        compassStageGuestConsumerId: String = "compassStageGuestConsumerId",
-        compassProdGuestClientSecret: String = "compassProdGuestClientSecret",
-        compassStageGuestClientSecret: String = "compassStageGuestClientSecret"
-    ) {
-        self.branchProdKey = branchProdKey
-        self.branchDevKey = branchDevKey
-        self.braze = braze
-        self.buttonApplicationIdDebug = buttonApplicationIdDebug
-        self.buttonApplicationIdProd = buttonApplicationIdProd
-        self.pendoKey = pendoKey
-        mokePerimeterXKey = perimeterX
-        self.quantumMetricKey = quantumMetricKey
-        self.quantumMetricStageKey = quantumMetricStageKey
-        self.appsFlyerDevKey = appsFlyerDevKey
-        self.appsFlyerAppID = appsFlyerAppID
-        self.appsFlyerOneLinkAuth = appsFlyerOneLinkAuth
-        self.fitPredictorPartnerKey = fitPredictorPartnerKey
-        self.fitPredictorServiceKey = fitPredictorServiceKey
-        self.fitPredictorEmailSalt = fitPredictorEmailSalt
-        self.flipp = flipp
-        self.threatMetrixStgOrgID = threatMetrixStgOrgID
-        self.threatMetrixProdOrgID = threatMetrixProdOrgID
-        self.encryptionKey = encryptionKey
-        self.idMeClientIdKey = idMeClientIdKey
-        self.appCenterKey = appCenterKey
-        self.arAPIClientIdKey = arAPIClientIdKey
-        self.arAPIClientSecretKey = arAPIClientSecretKey
-        self.googleMaps = googleMaps
-        fisPayPageId = fisPaypageId
-        self.fisPayPageProdId = fisPayPageProdId
-        self.bazaarvoice = bazaarvoice
-        self.tslClientKey = tslClientKey
-        self.tslClientDevKey = tslClientDevKey
-        self.tslSharedSecrete = tslSharedSecrete
-        self.tslSharedDevSecrete = tslSharedDevSecrete
-        self.livestreamSaltKey = livestreamSaltKey
-        self.livestreamSaltDevKey = livestreamSaltDevKey
-        self.aropticalProdKey = aropticalProdKey
-        self.aropticalDevKey = aropticalDevKey
-        self.dsgNativePartnerKey = dsgNativePartnerKey
-        self.dsgNativeAPIServiceKey = dsgNativeAPIServiceKey
-        self.acousticAppKey = acousticAppKey
-        self.acousticClientSecret = acousticClientSecret
-        self.acousticIgniToken = acousticIgniToken
-        self.acousticRefreshToken = acousticRefreshToken
-        self.synchronyStageClientKey = synchronyStageClientKey
-        self.synchronyStageClientIDKey = synchronyStageClientIDKey
-        self.synchronyClientKey = synchronyClientKey
-        self.synchronyClientIDKey = synchronyClientIDKey
-        self.synchronyBusinessStageClientKey = synchronyBusinessStageClientKey
-        self.synchronyBusinessStageClientID = synchronyBusinessStageClientID
-        self.synchronyBusinessClientKey = synchronyBusinessClientKey
-        self.synchronyBusinessClientID = synchronyBusinessClientID
-        self.compassProdLoggedInConsumerId = compassProdLoggedInConsumerId
-        self.compassStageLoggedInConsumerId = compassStageLoggedInConsumerId
-        self.compassProdGuestConsumerId = compassProdGuestConsumerId
-        self.compassStageGuestConsumerId = compassStageGuestConsumerId
-        self.compassProdGuestClientSecret = compassProdGuestClientSecret
-        self.compassStageGuestClientSecret = compassStageGuestClientSecret
-    }
-
-    public func getPerimeterXKey() -> String {
-        return mokePerimeterXKey
-    }
-}
+GCC_PREPROCESSOR_DEFINITIONS = DEBUG=1 $(inherited) BRAZE_KEY=${BRAZE_API_KEY} PERIMETERX_KEY=${PERIMETERX_API_KEY} PERIMETERX_KEY_DEBUG=${PERIMETERX_API_DEBUG_KEY} APPSFLYER_DEV_KEY=${APPSFLYER_API_DEV_KEY} APPSFLYER_APP_ID=${APPSFLYER_API_APP_ID} APPSFLYER_ONELINK_AUTH=${APPSFLYER_ONELINK_API_AUTH} THREATMETRIX_STG_ORG_ID=${THREATMETRIX_API_STG_ORG_ID} THREATMETRIX_PROD_ORG_ID=${THREATMETRIX_API_PROD_ORG_ID} ENCRYPTION_KEY=${ENCRYPTION_PRIVATE_KEY} FLIPP_KEY=${FLIPP_API_KEY} FIS_PAYPAGEID_KEY=${FIS_PAYPAGEID_API_KEY} FIS_PAYPAGEID_PROD_KEY=${FIS_PAYPAGEID_PROD_API_KEY} FIT_PREDICTOR_PARTNER_KEY=${FIT_PREDICTOR_PARTNER_API_KEY} FIT_PREDICTOR_SERVICE_KEY=${FIT_PREDICTOR_SERVICE_API_KEY}  FIT_PREDICTOR_EMAIL_SALT=${FIT_PREDICTOR_EMAIL_SALT_VALUE}  ID_ME_CLIENT_ID_KEY=${ID_ME_CLIENT_ID} APPCENTER_KEY=${APPCENTER_API_KEY} AR_API_CLIENT_KEY=${AR_API_ID_KEY} AR_API_CLIENT_SECRET_KEY=${AR_API_SECRET_KEY} QUANTUMMETRIC_UID=${QUANTUMMETRIC_API_UID} QUANTUMMETRIC_STAGE_UID=${QUANTUMMETRIC_STAGE_API_UID} BAZAARVOICE_KEY=${BAZAARVOICE_LICENCE_KEY} TSL_SECRETE_DEV=${TSL_DEV_SHARED_SECRETE} TSL_SECRETE=${TSL_SHARED_SECRETE} TSL_KEY_DEV=${TSL_DEV_CLIENT_KEY} TSL_KEY=${TSL_CLIENT_KEY} LIVESTREAM_SALT_DEV=${LIVESTREAM_DEV_SALT_KEY} LIVESTREAM_SALT=${LIVESTREAM_SALT_KEY} DSG_NATIVE_PARTNER_KEY=${DSG_NATIVE_PARTNER_API_KEY} DSG_NATIVE_PARTNER_SERVICE_KEY=${DSG_NATIVE_PARTNER_API_SERVICE_KEY} AROPTICAL_PROD=${AROPTICAL_PROD_KEY} AROPTICAL_DEV=${AROPTICAL_DEV_KEY} COMPASS_PROD_LOGGED_IN_CONSUMER_ID=${COMPASS_PROD_LOGGED_IN_CONSUMER_ID} COMPASS_STAGE_LOGGED_IN_CONSUMER_ID=${COMPASS_STAGE_LOGGED_IN_CONSUMER_ID} COMPASS_PROD_GUEST_CONSUMER_ID=${COMPASS_PROD_GUEST_CONSUMER_ID} COMPASS_STAGE_GUEST_CONSUMER_ID=${COMPASS_STAGE_GUEST_CONSUMER_ID} COMPASS_PROD_GUEST_CLIENT_SECRET=${COMPASS_PROD_GUEST_CLIENT_SECRET} COMPASS_STAGE_GUEST_CLIENT_SECRET=${COMPASS_STAGE_GUEST_CLIENT_SECRET}
