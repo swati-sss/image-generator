@@ -98,3 +98,49 @@ enum Environment {
             site: site,
             userId: accountID,
             siteType: .Store,
+            mockUser: mockUser,
+            businessUnitType: .WALMART
+        )
+    }
+}
+
+enum DebugData {
+    enum StoreID {
+        static let inStore = "3594"
+        static let oriient = "2119"
+    }
+
+    static let testCompassEventStatus = CurrentValueSubject<Int, Never>(1)
+    static let count = 1
+    static let sensorAssetId = "3452000"
+    static let asset2280List = ["1645190"]
+    static let asset3594List = ["836445", "836446", "2712934", "2556484"]
+
+    static let assetNodFound = "2670713"
+    static let otherStore = "585879"
+
+    static let inStoreMapEncodedString = "eHMvW1pKLEFHXS8x"
+    static let oriientMapEncodedString = "WkovWy0xQ2wsMTddLzE="
+    static let inStoreMapMultipinEncodedString = "eHMvWy1GQixGYyMtSXAsRW1dLzE="
+    static let oriientMapMultipinEncodedString = "YzAvWy1GQyxGZCMtSXEsRW1dLzE="
+}
+
+extension Dictionary {
+    func toJSONString() -> String? {
+        guard let jsonData = try? JSONSerialization.data(
+            withJSONObject: self,
+            options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        )
+        else {
+            // Log.debug("Something is wrong while converting dictionary to JSON data.")
+            return nil
+        }
+
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            // Log.debug("Something is wrong while converting JSON data to JSON string.")
+            return nil
+        }
+
+        return jsonString
+    }
+}
