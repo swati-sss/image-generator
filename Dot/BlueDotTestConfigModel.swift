@@ -1,96 +1,407 @@
-// MARK: - BlueDot Test Configuration
+//
+//  Compass+Debug.swift
+//  compass_sdk_ios
+//
+//  Created by Pratik Patel on 11/18/25.
+//
 
-import compass_sdk_ios
+import Foundation
 
-private enum BlueDotAuthTokenType: String {
-    case iam
-    case pingfed
-    case user
+#if DEBUG
 
-    init(rawConfigValue: String) {
-        switch rawConfigValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "iam":
-            self = .iam
-        case "pingfed":
-            self = .pingfed
-        case "user":
-            self = .user
-        default:
-            self = .user
-        }
-    }
+enum CompassDebugOverrides {
+    static var localMapURL: URL?
 }
 
-struct BlueDotTestConfig: Codable {
-    let testStores: [Int]
-    let testEnvironment: String
-    let mockUserEnabled: Bool
-    let tokenType: String
-    let verificationTimeout: Int
-    let accountID: String
-    let flagsToCheck: [String: Bool]
+extension Compass {
+    private enum AssociatedKeys {
+        static var originalStoreConfig = "originalStoreConfig"
+        static var originalConsumerConfig = "originalConsumerConfig"
+        static var hasAppliedOverrides = "hasAppliedOverrides"
+    }
 
-    func getEnabledFlags() -> [String] {
-        flagsToCheck.compactMap { key, value in
-            value ? key : nil
+    public func setStore(_ store: Int?) {
+        self.currentStore = store
+    }
+
+    private var originalStoreConfig: StoreConfig? {
+        get {
+            objc_getAssociatedObject(self, AssociatedKeys.originalStoreConfig) as? StoreConfig
+        }
+        set {
+            objc_setAssociatedObject( self,
+                                      AssociatedKeys.originalStoreConfig,
+                                      newValue,
+                                      .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 
-    func isFlagEnabled(_ flagName: String) -> Bool {
-        flagsToCheck[flagName] ?? false
-    }
-
-    var authToken: String {
-        switch normalizedTokenType {
-        case .user:
-            return "MTAyOTYyMDE4dSxyrP0t1Jm+zsHDj/m58lYEBSWPPQT0ASxP67P/p/R/XCviMJx6YIyuweMm/D4szCyTMBgQUr8MJWMSm3S2rqgF8Z3ooqOrbfBJzORYy7wGmKcywYDpRHb13NVCvU9dVoZ2h67qtmWCX5xnAS95ZSpQBIV+q5odNqvzV1gAYlvCveWZ0+3rq3ePWs9LhzZ7tXoVX6MbrQS+QrPDOp+Ee8FAqtMt7lzQdJSvbzFlrGCMSMVOB6MAabmTP67qQX6SO9FaZQ9xSvIHt7THYc5BH11KK3aFtE5QbXB6Vt5ZAzN3ltf8skOawMmpueLResLhye4vrf8JNA1nW1zzpx3kxQ=="
-        case .pingfed:
-            return "eyJhbGciOiJSUzI1NiIsImtpZCI6InBmZWRzdGFnZV9zaWduX01heTIwMjUiLCJwaS5hdG0iOiIzIn0.eyJzY29wZSI6Im9wZW5pZCBmdWxsIiwiYXV0aG9yaXphdGlvbl9kZXRhaWxzIjpbXSwiY2xpZW50X2lkIjoiR0lGMkFQUCIsImd1aWQiOiJFN2QyVnpyR3JTa1Zha2ZVY25sdUF6U0JEM25XUnlYTiIsImlzcyI6Imh0dHBzOi8vcGZlZGNlcnQud2FsLW1hcnQuY29tIiwianRpIjoickZvMElEeFYiLCJhdWQiOiJHSUYyQVBQIiwic3ViIjoiYjBwMDd2NkBob21lb2ZmaWNlLndhbC1tYXJ0LmNvbSIsInVwbiI6ImIwcDA3djZAaG9tZW9mZmljZS53YWwtbWFydC5jb20iLCJuYmYiOjE3MzcxMzQzNjMsImlhdCI6MTczNzEzNDQ4MywidXNlcmlkIjoiYjBwMDd2NiIsIndpbiI6IjIzMDIxMDQyMCIsImV4cCI6MTczNzE3NzY4M30.AOJ7bM7mwNm79zZ0Z_7-HnbeVznAiLLMMba24pzimmGJACR8skMKzoEYFfqZWf_4Ovj2EAjqJMlLZhyp0H1u_Y3KELWpZ-MCwD0ngp6mM84y2KWhk8HszJFAcnTIeEr151sdnRWYLqQm12qIWQ_oJy7PCzqGbHswr262WksgLu_bOTZuS1wph8wT16uq1b3ixp2NeDF8nT3O1hqf_KkZcN5hiZbjgWBvrD5h86s72hOWQdMh6mUzDD8BS-sE5pWCoR9U7BatBrqBkG92KP6DWVuzVrB2F_1xriZFwhn4b69hTHOR_HNCNPPrDri6P3MWCZvH9yFkmMhjgUJsmF_GOksoeCnWZdu6kfIgJXT2aHsjUdKURH2sZvwMJZpFkU-dqEXOgE61suunvXdKTcwSFEjwVEPQcKds1nFsUrXk_k-4q6o_W1_zgTgXg7btw6iAM0Jr928w4GsdcZXtZyCDzGPR1WwYHVI1XHQ2zmGKWIEDwFSZJNecLEvlzz2xQ52Y28s1aRwjlrP3fu3IS_gGI-D2_uh0Q-1LvFFTD06i38P7oYtYAgVqDlHiuVrZOIlvDmQpeImXx1O5CkGYQhXjxqt4cRCzhcPV-Di7C74K92hMxavuWxH6OwSagWl3mLSh2nwi1pL-aBATpAcW-OcRpgOZ08qSDrd0BdW2vQidnAM"
-        case .iam:
-            return isProductionEnvironment ? "T3u0ATKtG2Sz3cOOZGnWmDS3AXC7JoOn8I39nxdB-XeCoR1hN1g61dHySkqwCuqm2jQvYDp4UfoAdENPxu_e5g" : "Uhcqt1EBCq3COum7WhGK4b0Pre0TyMndfqMsCslnzyd70Zc5Xy1NI-pyCARRNG0qQvkI2iVv2s7sKGBiTwz_PQ"
+    private var hasAppliedOverrides: Bool {
+        get {
+            objc_getAssociatedObject(self, AssociatedKeys.hasAppliedOverrides) as? Bool ?? false
+        }
+        set {
+            objc_setAssociatedObject(self,
+                                     AssociatedKeys.hasAppliedOverrides,
+                                     newValue,
+                                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 
-    var consumerID: String {
-        switch normalizedTokenType {
-        case .user:
-            return isProductionEnvironment ? "069B60DB-4E9C-45B5-AD25-E475C9A0DB7A" : "573e4372-b4f0-4f01-a58d-3f7aff19e078"
-        case .pingfed:
-            return isProductionEnvironment ? "069B60DB-4E9C-45B5-AD25-E475C9A0DB7A" : "87ef92cb-d52c-4462-b4f7-d2f58046d9c6"
-        case .iam:
-            return isProductionEnvironment ? "6032c31d-55fc-4f1a-abb7-76246301c2c3" : "c061c52a-b978-4ae9-9875-6584e58e8a74"
+    private var originalConsumerConfig: [String: Bool]? {
+        get {
+            objc_getAssociatedObject(self, AssociatedKeys.originalConsumerConfig) as? [String: Bool]
+        }
+        set {
+            objc_setAssociatedObject(self,
+                                     AssociatedKeys.originalConsumerConfig,
+                                     newValue,
+                                     .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
     }
 
-    var apiEndpoint: String {
-        isProductionEnvironment
-            ? "https://developer.api.us.walmart.com/api-proxy/service/COMPASS/SERVICE/v1/config"
-            : "https://developer.api.us.stg.walmart.com/api-proxy/service/COMPASS/SERVICE/v1/config"
+    private var currentConsumerConfig: [String: Bool] {
+        [
+            "isMapCdnEnabled": Analytics.isMapCdnEnabled,
+            "isMapCompressionEnabled": Analytics.isMapCompressionEnabled
+        ]
     }
 
-    var compassEnvironment: CompassEnvironment {
-        isProductionEnvironment ? .production : .staging
+    public func getCurrentStoreConfig() -> [String: Any]? {
+        guard let assetService = serviceLocator.getAssetService() as? AssetServiceImpl,
+              let storeConfig = assetService.lastStoreConfig else { return nil }
+
+        var config: [String: Any] = [:]
+
+        config["bluedotEnabled"] = storeConfig.bluedotEnabled ?? false
+        config["bluedotDisplayed"] = storeConfig.bluedotDisplayed ?? false
+        config["dynamicMapEnabled"] = storeConfig.dynamicMapEnabled ?? false
+        config["zoomControlEnabled"] = storeConfig.zoomControlEnabled ?? false
+        config["errorScreensEnabled"] = storeConfig.errorScreensEnabled ?? false
+        config["dynamicMapRotationEnabled"] = storeConfig.dynamicMapRotationEnabled ?? false
+        config["spinnerEnabled"] = storeConfig.spinnerEnabled ?? false
+        config["useBackgroundService"] = storeConfig.useBackgroundService ?? false
+        config["heartbeatInLocation"] = storeConfig.heartbeatInLocation ?? false
+        config["heartbeatEnabled"] = storeConfig.heartbeatEnabled ?? false
+        config["heartBeatInUser"] = storeConfig.heartBeatInUser ?? false
+        config["navigationEnabled"] = storeConfig.navigationEnabled ?? false
+        config["valid"] = storeConfig.valid ?? false
+        config["analytics"] = storeConfig.analytics ?? false
+
+        config["backgroundServiceTimeout"] = storeConfig.backgroundServiceTimeout ?? 300.0
+        config["geoFenceCheckTimeout"] = storeConfig.geoFenceCheckTimeout ?? 1.0
+        config["positioningSessionTimeout"] = storeConfig.positioningSessionTimeout ?? 1.0
+        config["sessionRefreshTime"] = storeConfig.sessionRefreshTime ?? SessionTime.positionRefreshTime
+        config["heartbeatInterval"] = storeConfig.heartbeatInterval ?? 300_000.0
+        config["batchInterval"] = storeConfig.batchInterval ?? 60_000.0
+
+        config["supportedEventList"] = storeConfig.supportedEventList ?? ""
+        config["storeId"] = storeConfig.storeId ?? 0
+        config["mapType"] = storeConfig.mapType ?? ""
+
+        let offsetConfig = storeConfig.offset ?? StoreConfigOffset(x: 0, y: 0)
+        config["offset"] = [
+            "x": Double(offsetConfig.x),
+            "y": Double(offsetConfig.y)
+        ]
+
+        let navigationConfig = storeConfig.navigation ?? NavigationConfig()
+        config["navigation"] = [
+            "enabled": navigationConfig.enabled ?? (storeConfig.navigationEnabled ?? false),
+            "refreshDuration": navigationConfig.refreshDuration ?? 0.0,
+            "isAutomaticNavigation": navigationConfig.isAutomaticNavigation
+        ]
+
+        let mapUiConfig = storeConfig.mapUi ?? MapUiConfig()
+        config["mapUi"] = [
+            "bannerEnabled": mapUiConfig.bannerEnabled,
+            "snackBarEnabled": mapUiConfig.snackBarEnabled,
+            "pinLocationUnavailableBannerEnabled": mapUiConfig.pinLocationUnavailableBannerEnabled
+        ]
+
+        let pinsConfig = storeConfig.resolvedPins
+        config["pins"] = [
+            "featurePinEnabled": pinsConfig.featurePinEnabled,
+            "pinType": pinsConfig.pinType,
+            "groupPinsEnabled": pinsConfig.groupPinsEnabled
+        ]
+
+        let debugLogConfig = storeConfig.resolvedDebugLog
+        config["debugLog"] = [
+            "sensitiveInfoEnabled": debugLogConfig.sensitiveInfoEnabled,
+            "navigationValidateCoordEnabled": debugLogConfig.navigationValidateCoordEnabled
+        ]
+
+        config["consumerConfig"] = currentConsumerConfig
+
+        return config
     }
 
-    var normalizedTokenTypeString: String {
-        normalizedTokenType.rawValue
+    public func applyFeatureFlagOverrides(_ overrides: [String: Any]) {
+        guard let assetService = serviceLocator.getAssetService() as? AssetServiceImpl,
+              var storeConfig = assetService.lastStoreConfig else { return }
+
+        if !hasAppliedOverrides {
+            originalStoreConfig = storeConfig
+            originalConsumerConfig = currentConsumerConfig
+            hasAppliedOverrides = true
+        }
+
+        applyBooleanOverrides(overrides, to: &storeConfig)
+        applyDoubleOverrides(overrides, to: &storeConfig)
+        applyIntegerOverrides(overrides, to: &storeConfig)
+        applyStringOverrides(overrides, to: &storeConfig)
+        applyNestedOverrides(overrides, to: &storeConfig)
+
+        assetService.lastStoreConfig = storeConfig
+        _ = viewModel.updateStoreConfiguration(storeConfig)
     }
 
-    var authParameter: AuthParameter {
-        AuthParameter(
-            clientSecret: authToken,
-            tokenType: normalizedTokenTypeString,
-            accountID: accountID,
-            consumerID: consumerID
-        )
+    private func applyBooleanOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        let mappings: [String: WritableKeyPath<StoreConfig, Bool?>] = [
+            "bluedotEnabled": \.bluedotEnabled,
+            "bluedotDisplayed": \.bluedotDisplayed,
+            "dynamicMapEnabled": \.dynamicMapEnabled,
+            "zoomControlEnabled": \.zoomControlEnabled,
+            "errorScreensEnabled": \.errorScreensEnabled,
+            "dynamicMapRotationEnabled": \.dynamicMapRotationEnabled,
+            "spinnerEnabled": \.spinnerEnabled,
+            "useBackgroundService": \.useBackgroundService,
+            "heartbeatInLocation": \.heartbeatInLocation,
+            "heartbeatEnabled": \.heartbeatEnabled,
+            "heartBeatInUser": \.heartBeatInUser,
+            "navigationEnabled": \.navigationEnabled,
+            "valid": \.valid,
+            "analytics": \.analytics
+        ]
+
+        for (key, keyPath) in mappings {
+            if let value = boolValue(overrides[key]) {
+                storeConfig[keyPath: keyPath] = value
+            }
+        }
     }
 
-    private var normalizedTokenType: BlueDotAuthTokenType {
-        BlueDotAuthTokenType(rawConfigValue: tokenType)
+    private func applyDoubleOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        let mappings: [String: WritableKeyPath<StoreConfig, Double?>] = [
+            "backgroundServiceTimeout": \.backgroundServiceTimeout,
+            "geoFenceCheckTimeout": \.geoFenceCheckTimeout,
+            "positioningSessionTimeout": \.positioningSessionTimeout,
+            "heartbeatInterval": \.heartbeatInterval,
+            "batchInterval": \.batchInterval
+        ]
+
+        for (key, keyPath) in mappings {
+            if let value = doubleValue(overrides[key]) {
+                storeConfig[keyPath: keyPath] = value
+            }
+        }
     }
 
-    private var isProductionEnvironment: Bool {
-        let environment = testEnvironment.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return environment == "prod" || environment == "production"
+    private func applyIntegerOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        let mappings: [String: WritableKeyPath<StoreConfig, Int?>] = [
+            "sessionRefreshTime": \.sessionRefreshTime,
+            "storeId": \.storeId
+        ]
+
+        for (key, keyPath) in mappings {
+            if let value = intValue(overrides[key]) {
+                storeConfig[keyPath: keyPath] = value
+            }
+        }
+    }
+
+    private func applyStringOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        if let mapType = overrides["mapType"] as? String {
+            storeConfig.mapType = mapType
+        }
+        if let supportedEventList = overrides["supportedEventList"] as? String {
+            storeConfig.supportedEventList = supportedEventList
+        }
+    }
+
+    private func applyNestedOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        if let offsetOverrides = overrides["offset"] as? [String: Any] {
+            applyOffsetOverrides(offsetOverrides, to: &storeConfig)
+        }
+        if let navigationOverrides = overrides["navigation"] as? [String: Any] {
+            applyNavigationOverrides(navigationOverrides, to: &storeConfig)
+        }
+        if let mapUiOverrides = overrides["mapUi"] as? [String: Any] {
+            applyMapUiOverrides(mapUiOverrides, to: &storeConfig)
+        }
+        if let pinsOverrides = overrides["pins"] as? [String: Any] {
+            applyPinsOverrides(pinsOverrides, to: &storeConfig)
+        }
+        if let debugLogOverrides = overrides["debugLog"] as? [String: Any] {
+            applyDebugLogOverrides(debugLogOverrides, to: &storeConfig)
+        }
+        if let consumerConfigOverrides = overrides["consumerConfig"] as? [String: Any] {
+            applyConsumerConfigOverrides(consumerConfigOverrides)
+        }
+    }
+
+    private func applyOffsetOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        var offsetConfig = storeConfig.offset ?? StoreConfigOffset(x: 0, y: 0)
+
+        if let x = doubleValue(overrides["x"]) {
+            offsetConfig.x = CGFloat(x)
+        }
+        if let y = doubleValue(overrides["y"]) {
+            offsetConfig.y = CGFloat(y)
+        }
+
+        storeConfig.offset = offsetConfig
+    }
+
+    private func applyNavigationOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        var navigationConfig = storeConfig.navigation ?? NavigationConfig()
+
+        if let enabled = boolValue(overrides["enabled"]) {
+            navigationConfig.enabled = enabled
+            storeConfig.navigationEnabled = enabled
+        }
+        if let refreshDuration = doubleValue(overrides["refreshDuration"]) {
+            navigationConfig.refreshDuration = refreshDuration
+        }
+        if let isAutomaticNavigation = boolValue(overrides["isAutomaticNavigation"]) {
+            navigationConfig.isAutomaticNavigation = isAutomaticNavigation
+        }
+
+        storeConfig.navigation = navigationConfig
+    }
+
+    private func applyMapUiOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        var mapUiConfig = storeConfig.mapUi ?? MapUiConfig()
+
+        if let bannerEnabled = boolValue(overrides["bannerEnabled"]) {
+            mapUiConfig.bannerEnabled = bannerEnabled
+        }
+        if let snackBarEnabled = boolValue(overrides["snackBarEnabled"]) {
+            mapUiConfig.snackBarEnabled = snackBarEnabled
+        }
+        if let pinLocationUnavailableBannerEnabled =
+            boolValue(overrides["pinLocationUnavailableBannerEnabled"]) {
+            mapUiConfig.pinLocationUnavailableBannerEnabled = pinLocationUnavailableBannerEnabled
+        }
+
+        storeConfig.mapUi = mapUiConfig
+    }
+
+    private func applyPinsOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        var pinsConfig = storeConfig.resolvedPins
+
+        if let featurePinEnabled = boolValue(overrides["featurePinEnabled"]) {
+            pinsConfig.featurePinEnabled = featurePinEnabled
+        }
+        if let pinType = overrides["pinType"] as? String {
+            pinsConfig.pinType = pinType
+        }
+        if let groupPinsEnabled = boolValue(overrides["groupPinsEnabled"]) {
+            pinsConfig.groupPinsEnabled = groupPinsEnabled
+        }
+
+        storeConfig.pins = pinsConfig
+    }
+
+    private func applyDebugLogOverrides(_ overrides: [String: Any], to storeConfig: inout StoreConfig) {
+        var debugLogConfig = storeConfig.resolvedDebugLog
+
+        if let sensitiveInfoEnabled = boolValue(overrides["sensitiveInfoEnabled"]) {
+            debugLogConfig.sensitiveInfoEnabled = sensitiveInfoEnabled
+        }
+        if let navigationValidateCoordEnabled = boolValue(overrides["navigationValidateCoordEnabled"]) {
+            debugLogConfig.navigationValidateCoordEnabled = navigationValidateCoordEnabled
+        }
+
+        storeConfig.debugLog = debugLogConfig
+    }
+
+    private func applyConsumerConfigOverrides(_ overrides: [String: Any]) {
+        if let isMapCdnEnabled = boolValue(overrides["isMapCdnEnabled"]) {
+            Analytics.isMapCdnEnabled = isMapCdnEnabled
+        }
+        if let isMapCompressionEnabled = boolValue(overrides["isMapCompressionEnabled"]) {
+            Analytics.isMapCompressionEnabled = isMapCompressionEnabled
+        }
+    }
+
+    private func boolValue(_ value: Any?) -> Bool? {
+        if let bool = value as? Bool {
+            return bool
+        }
+        if let number = value as? NSNumber {
+            return number.boolValue
+        }
+        return nil
+    }
+
+    private func doubleValue(_ value: Any?) -> Double? {
+        if let double = value as? Double {
+            return double
+        }
+        if let int = value as? Int {
+            return Double(int)
+        }
+        if let number = value as? NSNumber {
+            return number.doubleValue
+        }
+        if let string = value as? String {
+            return Double(string)
+        }
+        return nil
+    }
+
+    private func intValue(_ value: Any?) -> Int? {
+        if let int = value as? Int {
+            return int
+        }
+        if let number = value as? NSNumber {
+            return number.intValue
+        }
+        if let string = value as? String {
+            return Int(string)
+        }
+        return nil
+    }
+
+    public func revertToOriginalConfig() {
+        guard let originalConfig = originalStoreConfig,
+              let assetService = serviceLocator.getAssetService() as? AssetServiceImpl else { return }
+
+        assetService.lastStoreConfig = originalConfig
+        _ = viewModel.updateStoreConfiguration(originalConfig)
+
+        if let originalConsumerConfig {
+            Analytics.isMapCdnEnabled = originalConsumerConfig["isMapCdnEnabled"] ?? false
+            Analytics.isMapCompressionEnabled = originalConsumerConfig["isMapCompressionEnabled"] ?? false
+        }
+
+        hasAppliedOverrides = false
+        originalStoreConfig = nil
+        originalConsumerConfig = nil
+    }
+
+    public func hasOverridesApplied() -> Bool {
+        return hasAppliedOverrides
+    }
+
+    public func resetOverrideTracking() {
+        hasAppliedOverrides = false
+        originalStoreConfig = nil
+        originalConsumerConfig = nil
+    }
+
+    public func setLocalMapFileURL(_ url: URL?) {
+        Compass.setLocalMapFileURL(url)
+    }
+
+    public static func setLocalMapFileURL(_ url: URL?) {
+        CompassDebugOverrides.localMapURL = url
+    }
+
+    public static func currentLocalMapFileURL() -> URL? {
+        CompassDebugOverrides.localMapURL
     }
 }
+#endif
